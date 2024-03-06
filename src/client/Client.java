@@ -7,10 +7,11 @@ import java.net.InetAddress;
 import java.net.SocketException;
 import java.util.Scanner;
 
+import crypto.Crypto;
 import dbg.Dbg;
 import dbg.Dbg.Color;
 
-public class Client {
+public class Client implements Runnable {
   /*
    * DatagramSocket para o cliente
    */
@@ -20,69 +21,78 @@ public class Client {
   InetAddress address;
   byte[] sendBuffer;
   byte[] receiveBuffer;
+  String token;
+  Crypto crypto;
+  Boolean logged = false;
 
   public Client() {
-    run();
+    crypto = new Crypto();
+    start();
+  }
+
+  public Client(String hmacKey) {
+    crypto = new Crypto(hmacKey);
+    start();
+  }
+
+  private void start() {
+    Thread t = new Thread(this);
+    t.start();
+    try {
+      t.join();
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+    }
   }
 
   public void run() {
     try {
+      Dbg.log();
       clientSocket = new DatagramSocket();
       address = InetAddress.getByName("localhost");
-      System.out.println("Cliente rodando em: " +
+      Dbg.log(Color.CYAN, "Cliente rodando em: " +
           InetAddress.getLocalHost() + ":" +
-          clientSocket.getLocalPort());
+          clientSocket.getLocalPort() + "\n");
       while (active) {
 
         Dbg.log(Color.BLUE, "|--- Sistema do banco ---|");
-        Dbg.log(Color.BLUE, "1. Autenticar");
+        Dbg.log(Color.BLUE, "1. Login");
+        Dbg.log(Color.BLUE, "2. Cadastrar");
         String msg = sc.nextLine().trim();
 
-        Integer.parseInt(msg);
+        switch (msg) {
 
-        if (msg.equals("1")) {
-          if (authenticate()) {
-            Dbg.log(Color.GREEN, "Autenticado com sucesso");
-          } else {
-            Dbg.log(Color.RED, "Falha na autenticação");
-          }
+          case "1":
+            if (!logged) {
+              login();
+            } else {
+              Dbg.log(Color.RED, "Usuário já autenticado");
+            }
+            break;
+          case "2":
+            if (!logged) {
+              signUp();
+            } else {
+              Dbg.log(Color.RED, "Usuário já autenticado");
+            }
+            break;
+
+          case "exit":
+            active = false;
+            Dbg.log(Color.RED, "Cliente encerrado");
+            break;
+          default:
+            Dbg.log(Color.RED, "Comando inválido");
+            break;
         }
 
-        if (msg.trim().equals("exit")) {
-          active = false;
-          System.out.println("Cliente encerrado");
-          break;
-        }
-
-        sendBuffer = msg.getBytes();
-        DatagramPacket sendDatagram = new DatagramPacket(
-            sendBuffer,
-            sendBuffer.length,
-            address,
-            5050);
-        System.out.println("Cliente " +
-            address.getHostAddress() + " " +
-            clientSocket.getLocalPort() +
-            " enviando mensagem > " +
-            msg);
-
-        clientSocket.send(sendDatagram);
-
-        receiveBuffer = new byte[1024];
-        DatagramPacket receiveDatagram = new DatagramPacket(
-            receiveBuffer,
-            receiveBuffer.length);
-        clientSocket.receive(receiveDatagram);
-        receiveBuffer = receiveDatagram.getData();
-        System.out.println("Cliente " +
-            address.getHostAddress() +
-            " recebeu mensagem < " +
-            new String(receiveBuffer));
       }
     } catch (SocketException e) {
       System.out.println("Socket: " + e.getMessage());
     } catch (IOException e) {
       System.out.println("IO: " + e.getMessage());
+    } catch (Exception e) {
+      e.printStackTrace();
     } finally {
       if (clientSocket != null)
         clientSocket.close();
@@ -90,23 +100,73 @@ public class Client {
     }
   }
 
-  public Boolean authenticate() throws IOException {
+  public void login() throws Exception {
+    Dbg.log();
+    Dbg.log(Color.BLUE, "|--- Login ---|");
     Dbg.log(Color.YELLOW, "Digite o usuário:");
     String user = sc.nextLine();
     Dbg.log(Color.YELLOW, "Digite a senha:");
     String password = sc.nextLine();
 
-    String msg = "auth/" + user + ":" + password;
+    sendMessage("login/" + user + ":" + password);
 
-    sendBuffer = msg.getBytes();
-    DatagramPacket sendDatagram = new DatagramPacket(
-        sendBuffer,
-        sendBuffer.length,
-        address,
-        5050);
+    String response = receiveMessage();
 
-    clientSocket.send(sendDatagram);
+    Dbg.log();
 
+    try {
+      response = crypto.decryptMessage(new String(receiveBuffer));
+    } catch (Exception e) {
+      Dbg.log(Color.RED, e.getMessage());
+      return;
+    }
+
+    if (response.contains("true")) {
+      Dbg.log(Color.GREEN, "Usuário autenticado com sucesso!");
+      logged = true;
+    } else {
+      Dbg.log(Color.RED, "Número da conta e/ou senha incorretos.");
+    }
+  }
+
+  public void signUp() throws Exception {
+    Dbg.log();
+    Dbg.log(Color.BLUE, "|--- Cadastro ---|");
+    Dbg.log(Color.YELLOW, "Digite o nome:");
+    String name = sc.nextLine();
+    Dbg.log(Color.YELLOW, "Digite o CPF:");
+    String cpf = sc.nextLine();
+    Dbg.log(Color.YELLOW, "Digite a senha:");
+    String password = sc.nextLine();
+    Dbg.log(Color.YELLOW, "Digite o endereço:");
+    String address = sc.nextLine();
+    Dbg.log(Color.YELLOW, "Digite o telefone:");
+    String phone = sc.nextLine();
+    String msg = "signup/" + name + ":" + cpf + ":" + password + ":" + address + ":" + phone;
+
+    sendMessage(msg);
+
+    String response = receiveMessage();
+
+    Dbg.log();
+
+    try {
+      response = crypto.decryptMessage(new String(receiveBuffer));
+    } catch (Exception e) {
+      Dbg.log(Color.RED, e.getMessage());
+      return;
+    }
+
+    if (response.contains("true")) {
+      String accountNumber = response.split(":")[1];
+      Dbg.log(Color.GREEN, "Usuário cadastrado com sucesso!\nFaça login com o número da conta " + accountNumber
+          + " e a senha cadastrada.");
+    } else {
+      Dbg.log(Color.RED, "Erro ao cadastrar usuário.");
+    }
+  }
+
+  private String receiveMessage() throws Exception {
     receiveBuffer = new byte[1024];
 
     DatagramPacket receiveDatagram = new DatagramPacket(
@@ -115,8 +175,24 @@ public class Client {
     clientSocket.receive(receiveDatagram);
     receiveBuffer = receiveDatagram.getData();
 
-    String response = new String(receiveBuffer);
+    try {
+      return crypto.decryptMessage(new String(receiveBuffer));
+    } catch (Exception e) {
+      Dbg.log(Color.RED, e.getMessage());
+      return null;
+    }
+  }
 
-    return response.trim().equals("true");
+  private void sendMessage(String message) throws Exception {
+    sendBuffer = new byte[1024];
+    String msg = crypto.encryptMessage(message);
+    sendBuffer = msg.getBytes();
+    DatagramPacket sendDatagram = new DatagramPacket(
+        sendBuffer,
+        sendBuffer.length,
+        address,
+        5050);
+
+    clientSocket.send(sendDatagram);
   }
 }

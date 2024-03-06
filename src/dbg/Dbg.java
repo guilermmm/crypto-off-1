@@ -62,6 +62,10 @@ public class Dbg implements AutoCloseable {
     System.out.println(color + string + Color.RESET);
   }
 
+  public static void log() {
+    System.out.print("\033[H\033[2J");
+  }
+
   @Override
   public void close() {
     scanner.close();
