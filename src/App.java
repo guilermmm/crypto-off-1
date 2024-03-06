@@ -1,9 +1,10 @@
+import java.text.DecimalFormat;
+
 import crypto.Crypto;
 
 public class App {
     public static void main(String[] args) throws Exception {
-        Crypto crypto = new Crypto("qwoqwoqwoqwo");
-        Crypto crypto2 = new Crypto("qwoqwoqwoqwwwwwwwwo");
+        Crypto crypto = new Crypto();
         String message = "Hello, World!";
 
         String encryptedMessage = crypto.encryptMessage(message);
@@ -11,5 +12,6 @@ public class App {
 
         String decryptedMessage = crypto.decryptMessage(encryptedMessage);
         System.out.println("Decrypted message: " + decryptedMessage);
+
     }
 }

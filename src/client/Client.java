@@ -24,6 +24,7 @@ public class Client implements Runnable {
   String token;
   Crypto crypto;
   Boolean logged = false;
+  String accountNumber;
 
   public Client() {
     crypto = new Crypto();
@@ -56,8 +57,18 @@ public class Client implements Runnable {
       while (active) {
 
         Dbg.log(Color.BLUE, "|--- Sistema do banco ---|");
-        Dbg.log(Color.BLUE, "1. Login");
-        Dbg.log(Color.BLUE, "2. Cadastrar");
+
+        if (!logged) {
+          Dbg.log(Color.BLUE, "1. Login");
+          Dbg.log(Color.BLUE, "2. Cadastrar");
+        } else {
+          Dbg.log(Color.BLUE, "1. Saque");
+          Dbg.log(Color.BLUE, "2. Depósito");
+          Dbg.log(Color.BLUE, "3. Transferência");
+          Dbg.log(Color.BLUE, "4. Saldo");
+          Dbg.log(Color.BLUE, "5. Investimentos");
+          Dbg.log(Color.BLUE, "6. Sair");
+        }
         String msg = sc.nextLine().trim();
 
         switch (msg) {
@@ -66,22 +77,51 @@ public class Client implements Runnable {
             if (!logged) {
               login();
             } else {
-              Dbg.log(Color.RED, "Usuário já autenticado");
+              withdraw();
             }
             break;
           case "2":
             if (!logged) {
               signUp();
             } else {
-              Dbg.log(Color.RED, "Usuário já autenticado");
+              deposit();
+            }
+            break;
+          case "3":
+            if (logged) {
+              transfer();
+            } else {
+              Dbg.log(Color.RED, "Comando inválido");
+            }
+            break;
+          case "4":
+            if (logged) {
+              balance();
+            }
+            break;
+          case "5":
+            if (logged) {
+              investment();
+            } else {
+              Dbg.log(Color.RED, "Comando inválido");
+            }
+            break;
+          case "6":
+            if (logged) {
+
+              logged = false;
+              accountNumber = "";
+            } else {
+              Dbg.log(Color.RED, "Comando inválido");
             }
             break;
 
-          case "exit":
+          case "sair":
             active = false;
             Dbg.log(Color.RED, "Cliente encerrado");
             break;
           default:
+            Dbg.log();
             Dbg.log(Color.RED, "Comando inválido");
             break;
         }
@@ -103,12 +143,12 @@ public class Client implements Runnable {
   public void login() throws Exception {
     Dbg.log();
     Dbg.log(Color.BLUE, "|--- Login ---|");
-    Dbg.log(Color.YELLOW, "Digite o usuário:");
-    String user = sc.nextLine();
+    Dbg.log(Color.YELLOW, "Digite o número da conta:");
+    String accountNumber = sc.nextLine();
     Dbg.log(Color.YELLOW, "Digite a senha:");
     String password = sc.nextLine();
 
-    sendMessage("login/" + user + ":" + password);
+    sendMessage("login/" + accountNumber + ":" + password);
 
     String response = receiveMessage();
 
@@ -121,9 +161,10 @@ public class Client implements Runnable {
       return;
     }
 
-    if (response.contains("true")) {
+    if (response.equals("true")) {
       Dbg.log(Color.GREEN, "Usuário autenticado com sucesso!");
       logged = true;
+      this.accountNumber = accountNumber;
     } else {
       Dbg.log(Color.RED, "Número da conta e/ou senha incorretos.");
     }
@@ -157,12 +198,245 @@ public class Client implements Runnable {
       return;
     }
 
-    if (response.contains("true")) {
+    if (response.equals("true")) {
       String accountNumber = response.split(":")[1];
       Dbg.log(Color.GREEN, "Usuário cadastrado com sucesso!\nFaça login com o número da conta " + accountNumber
           + " e a senha cadastrada.");
     } else {
       Dbg.log(Color.RED, "Erro ao cadastrar usuário.");
+    }
+  }
+
+  public void withdraw() throws Exception {
+    Dbg.log();
+    Dbg.log(Color.BLUE, "|--- Saque ---|");
+
+    String accountType = "";
+    do {
+      if (accountType != "") {
+        Dbg.log(Color.RED, "Tipo de conta inválido.");
+      }
+      Dbg.log(Color.YELLOW, "Selecione o tipo de conta:");
+      Dbg.log(Color.YELLOW, "1. Conta corrente");
+      Dbg.log(Color.YELLOW, "2. Conta poupança");
+      Dbg.log(Color.YELLOW, "3. Renda fixa");
+      accountType = sc.nextLine();
+    } while (!accountType.equals("1") && !accountType.equals("2") && !accountType.equals("3"));
+
+    String value;
+
+    while (true) {
+      try {
+        Dbg.log(Color.YELLOW, "Digite o valor do saque:");
+        String inputValue = sc.nextLine();
+        value = String.format("%.2f", Float.parseFloat(inputValue));
+        break;
+      } catch (NumberFormatException e) {
+        Dbg.log(Color.RED, "Valor inválido.");
+      }
+    }
+
+    sendMessage("withdraw/" + accountNumber + ":" + accountType + ":" + value);
+    String response = receiveMessage();
+    Dbg.log();
+
+    try {
+      response = crypto.decryptMessage(new String(receiveBuffer));
+    } catch (Exception e) {
+      Dbg.log(Color.RED, e.getMessage());
+      return;
+    }
+
+    if (response.equals("true")) {
+      Dbg.log(Color.GREEN, "Saque realizado com sucesso!");
+    } else {
+      Dbg.log(Color.RED, "Erro ao realizar saque.");
+      Dbg.log(Color.RED, response);
+    }
+  }
+
+  public void deposit() throws Exception {
+    Dbg.log();
+    Dbg.log(Color.BLUE, "|--- Depósito ---|");
+
+    String accountType = "";
+    do {
+      if (accountType != "") {
+        Dbg.log(Color.RED, "Tipo de conta inválido.");
+      }
+      Dbg.log(Color.YELLOW, "Selecione o tipo de conta:");
+      Dbg.log(Color.YELLOW, "1. Conta corrente");
+      Dbg.log(Color.YELLOW, "2. Conta poupança");
+      Dbg.log(Color.YELLOW, "3. Renda fixa");
+      accountType = sc.nextLine();
+    } while (!accountType.equals("1") && !accountType.equals("2") && !accountType.equals("3"));
+
+    String value;
+
+    while (true) {
+      try {
+        Dbg.log(Color.YELLOW, "Digite o valor do depósito:");
+        String inputValue = sc.nextLine();
+        value = String.format("%.2f", Float.parseFloat(inputValue));
+        break;
+      } catch (NumberFormatException e) {
+        Dbg.log(Color.RED, "Valor inválido.");
+      }
+    }
+
+    sendMessage("deposit/" + accountNumber + ":" + accountType + ":" + value);
+    String response = receiveMessage();
+    Dbg.log();
+
+    try {
+      response = crypto.decryptMessage(new String(receiveBuffer));
+    } catch (Exception e) {
+      Dbg.log(Color.RED, e.getMessage());
+      return;
+    }
+
+    if (response.equals("true")) {
+      Dbg.log(Color.GREEN, "Depósito realizado com sucesso!");
+    } else {
+      Dbg.log(Color.RED, "Erro ao realizar depósito.");
+    }
+  }
+
+  public void transfer() throws Exception {
+    Dbg.log();
+    Dbg.log(Color.BLUE, "|--- Transferência ---|");
+
+    String destinationNumber = "";
+
+    do {
+      if (destinationNumber.equals(this.accountNumber)) {
+        Dbg.log(Color.RED, "Você não pode transferir para a sua própria conta.");
+      }
+      Dbg.log(Color.YELLOW, "Digite o número da conta de destino:");
+      destinationNumber = sc.nextLine();
+    } while (destinationNumber.equals(this.accountNumber));
+
+    String value;
+
+    while (true) {
+      try {
+        Dbg.log(Color.YELLOW, "Digite o valor da transferência:");
+        String inputValue = sc.nextLine();
+        value = String.format("%.2f", Float.parseFloat(inputValue));
+        break;
+      } catch (NumberFormatException e) {
+        Dbg.log(Color.RED, "Valor inválido.");
+      }
+    }
+
+    sendMessage("transfer/" + this.accountNumber + ":" + destinationNumber + ":" + value);
+    String response = receiveMessage();
+    Dbg.log();
+
+    try {
+      response = crypto.decryptMessage(new String(receiveBuffer));
+    } catch (Exception e) {
+      Dbg.log(Color.RED, e.getMessage());
+      return;
+    }
+
+    if (response.equals("true")) {
+      Dbg.log(Color.GREEN, "Transferência realizada com sucesso!");
+    } else {
+      Dbg.log(Color.RED, response);
+    }
+  }
+
+  public void balance() throws Exception {
+    Dbg.log();
+    Dbg.log(Color.BLUE, "|--- Saldo ---|");
+
+    String accountType = "";
+    do {
+      if (accountType != "") {
+        Dbg.log(Color.RED, "Tipo de conta inválido.");
+      }
+      Dbg.log(Color.YELLOW, "Selecione o tipo de conta:");
+      Dbg.log(Color.YELLOW, "1. Conta corrente");
+      Dbg.log(Color.YELLOW, "2. Conta poupança");
+      Dbg.log(Color.YELLOW, "3. Renda fixa");
+      accountType = sc.nextLine();
+    } while (!accountType.equals("1") && !accountType.equals("2") && !accountType.equals("3"));
+
+    sendMessage("balance/" + accountNumber + ":" + accountType);
+    String response = receiveMessage();
+    Dbg.log();
+
+    try {
+      response = crypto.decryptMessage(new String(receiveBuffer));
+    } catch (Exception e) {
+      Dbg.log(Color.RED, e.getMessage());
+      return;
+    }
+
+    if (response.contains("R$")) {
+      String accountName = accountType.equals("1") ? "Conta corrente"
+          : accountType.equals("2") ? "Conta poupança" : "Renda fixa";
+      Dbg.log(Color.GREEN, "Saldo da conta " + accountName + ": " + response + "\n");
+    } else {
+      Dbg.log(Color.RED, "Erro ao consultar saldo.");
+    }
+  }
+
+  public void investment() throws Exception {
+    Dbg.log();
+    Dbg.log(Color.BLUE, "|--- Investimentos ---|");
+
+    String accountType = "";
+    do {
+      if (accountType != "") {
+        Dbg.log(Color.RED, "Tipo de conta inválido.");
+      }
+      Dbg.log(Color.YELLOW, "Selecione o tipo de conta:");
+      Dbg.log(Color.YELLOW, "2. Conta poupança");
+      Dbg.log(Color.YELLOW, "3. Renda fixa");
+      accountType = sc.nextLine();
+    } while (!accountType.equals("2") && !accountType.equals("3"));
+
+    sendMessage("investment/" + accountNumber + ":" + accountType);
+    String response = receiveMessage();
+    Dbg.log();
+
+    try {
+      response = crypto.decryptMessage(new String(receiveBuffer));
+    } catch (Exception e) {
+      Dbg.log(Color.RED, e.getMessage());
+      return;
+    }
+
+    if (response.contains("R$")) {
+      if (accountType.equals("2")) {
+        Dbg.log(Color.GREEN, "Saldo da conta poupança: " + response + "\n");
+
+        var balance = Float.parseFloat(response.split("R\\$")[1].trim());
+
+        var interest3 = balance * 0.5f / 100 * 3;
+        var interest6 = balance * 0.5f / 100 * 6;
+        var interest12 = balance * 0.5f / 100 * 12;
+
+        Dbg.log(Color.GREEN, "Rendimento da poupança em 3 meses: R$" + String.format("%.2f", interest3));
+        Dbg.log(Color.GREEN, "Rendimento da poupança em 6 meses: R$" + String.format("%.2f", interest6));
+        Dbg.log(Color.GREEN, "Rendimento da poupança em 12 meses: R$" + String.format("%.2f", interest12) + "\n");
+      } else {
+        Dbg.log(Color.GREEN, "Saldo da renda fixa: " + response + "\n");
+
+        var balance = Float.parseFloat(response.split("R\\$")[1].trim());
+
+        var interest3 = balance * 1.5f / 100 * 3;
+        var interest6 = balance * 1.5f / 100 * 6;
+        var interest12 = balance * 1.5f / 100 * 12;
+
+        Dbg.log(Color.GREEN, "Rendimento da renda fixa em 3 meses: R$" + String.format("%.2f", interest3));
+        Dbg.log(Color.GREEN, "Rendimento da renda fixa em 6 meses: R$" + String.format("%.2f", interest6));
+        Dbg.log(Color.GREEN, "Rendimento da renda fixa em 12 meses: R$" + String.format("%.2f", interest12) + "\n");
+      }
+    } else {
+      Dbg.log(Color.RED, "Erro ao consultar saldo.");
     }
   }
 
