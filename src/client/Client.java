@@ -198,7 +198,7 @@ public class Client implements Runnable {
       return;
     }
 
-    if (response.equals("true")) {
+    if (response.contains("true")) {
       String accountNumber = response.split(":")[1];
       Dbg.log(Color.GREEN, "Usuário cadastrado com sucesso!\nFaça login com o número da conta " + accountNumber
           + " e a senha cadastrada.");
