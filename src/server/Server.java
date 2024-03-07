@@ -59,6 +59,9 @@ public class Server implements Runnable {
 
         Dbg.log(Color.BLUE, "Servidor recebeu a mensagem: " + message);
 
+        if (message == "null")
+          continue;
+
         String[] parted = message.split("/");
         String route = parted[0];
         String[] params = parted[1].split(":");

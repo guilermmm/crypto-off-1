@@ -12,9 +12,6 @@ import dbg.Dbg;
 import dbg.Dbg.Color;
 
 public class Client implements Runnable {
-  /*
-   * DatagramSocket para o cliente
-   */
   Boolean active = true;
   DatagramSocket clientSocket = null;
   Scanner sc = new Scanner(System.in);
