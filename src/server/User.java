@@ -1,7 +1,7 @@
 package server;
 
 public class User {
-  String cpf, password, name, address, phone, token;
+  String cpf, password, name, address, phone;
   int currentBalance, savingsBalance, fixedBalance;
 
   public User(String cpf, String password, String name, String address, String phone) {
