@@ -57,10 +57,13 @@ public class Server implements Runnable {
       while (active) {
         message = receiveMessage();
 
-        Dbg.log(Color.BLUE, "Servidor recebeu a mensagem: " + message);
-
-        if (message == "null")
+        if (message == null) {
+          Dbg.log(Color.RED, "Mensagem não autenticada.");
+          sendMessage("false");
           continue;
+        }
+
+        Dbg.log(Color.BLUE, "Servidor recebeu a mensagem: " + message);
 
         String[] parted = message.split("/");
         String route = parted[0];
